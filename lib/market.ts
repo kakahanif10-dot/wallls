@@ -523,6 +523,65 @@ export const ASSET_BY_SYMBOL: Record<string, Asset> = Object.fromEntries(
 );
 
 /**
+ * Universe assets: top 800 liquid names from Nasdaq's screener (S&P 500 +
+ * Nasdaq), top 800 digital assets across Coinbase Exchange + Binance + OKX,
+ * and 174 meme coins (Coinbase pairs plus Pump.fun trending tokens with
+ * live DexScreener prices). Copy is deliberately generic and honest: scores
+ * are computed from real daily closes on the ticker page; there is no
+ * per-name fundamental view to fabricate here.
+ */
+import { NWS_MEME_VENUES, NWS_UNIVERSE } from "./nws-universe";
+
+function universeAsset(symbol: string, name: string, kind: Kind): Asset {
+  if (kind === "meme") name = NWS_MEME_VENUES[symbol]?.name ?? symbol;
+  const label = kind === "stock" ? "equities" : kind === "crypto" ? "digital assets" : "meme coins";
+  return {
+    symbol,
+    name,
+    kind,
+    group:
+      kind === "stock" ? "Universe" : kind === "crypto" ? "Coinbase" : "Meme",
+    base: 0,
+    blurb: `${name} is tracked in the ${label} universe. Its trend score is computed from real daily closes and refreshes with the feed.`,
+    bull: [
+      "Trend score is derived from real daily closes — no modelled prices.",
+      "More liquidity than the meme tail of the market.",
+    ],
+    bear: [
+      "Scores are lagging indicators, not predictions.",
+      "Risk grades scale with realised volatility, which is highest in this tier.",
+    ],
+    catalysts: ["Feed refresh (about every minute)"],
+  };
+}
+
+export const UNIVERSE_ASSETS: Asset[] = [
+  ...NWS_UNIVERSE.stocks.map((s) => universeAsset(s.symbol, s.name, "stock")),
+  ...NWS_UNIVERSE.crypto.map((s) => universeAsset(s, s, "crypto")),
+  ...NWS_UNIVERSE.meme.map((s) => universeAsset(s, s, "meme")),
+];
+
+/** Every tracked asset: the 24 featured names plus the full universe. */
+export const ALL_ASSETS: Asset[] = [
+  ...ASSETS,
+  ...UNIVERSE_ASSETS.filter((a) => !ASSET_BY_SYMBOL[a.symbol]),
+];
+
+export const ALL_BY_SYMBOL: Record<string, Asset> = Object.fromEntries(
+  ALL_ASSETS.map((a) => [a.symbol, a]),
+);
+
+/** Resolve any tracked symbol to its asset definition. */
+export function lookupAsset(symbol: string): Asset | undefined {
+  return ALL_BY_SYMBOL[symbol];
+}
+
+/** Universe symbols for one kind (excludes the featured 24 already scored). */
+export function universeFor(kind: Kind): Asset[] {
+  return ALL_ASSETS.filter((a) => a.kind === kind);
+}
+
+/**
  * Real market data, hydrated once per request by `ensureMarketData()` in
  * `lib/market-data.ts`. Nothing here is generated: if a symbol has no fetched
  * history, `series()` returns an empty array and the UI reports missing data

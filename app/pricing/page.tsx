@@ -116,7 +116,7 @@ export default function PricingPage() {
             </thead>
             <tbody className="divide-y divide-line/70">
               {[
-                ["Trend scores (24 assets)", true, true, true],
+                ["Trend scores (1,774 assets)", true, true, true],
                 ["Research pieces per month", "2", "Unlimited", "Unlimited"],
                 ["Stance, conviction & invalidation level", false, true, true],
                 ["Meme-coin risk grading", false, true, true],

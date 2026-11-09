@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { COURSES } from "@/lib/content";
+import { COURSES, VIDEOS } from "@/lib/content";
+import VideoEmbed from "@/components/video-embed";
 
 export const metadata: Metadata = {
   title: "Academy",
@@ -29,6 +30,7 @@ export default function AcademyPage() {
             <span><span className="font-mono text-bone">{COURSES.length}</span> courses</span>
             <span><span className="font-mono text-bone">{totalLessons}</span> lessons</span>
             <span><span className="font-mono text-bone">{totalMinutes}</span> minutes</span>
+            <span><span className="font-mono text-bone">{VIDEOS.length}</span> real videos to watch</span>
             <span><span className="font-mono text-bone">1</span> foundation course free</span>
           </div>
         </div>
@@ -74,6 +76,19 @@ export default function AcademyPage() {
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 pb-16">
+        <h2 className="mb-2 font-display text-2xl text-bone">Watch the method</h2>
+        <p className="mb-6 max-w-2xl text-sm leading-relaxed text-muted">
+          Real videos from established educators, mapped to the foundation course. Press play — they run
+          right here, and every one links out to its original upload on YouTube.
+        </p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {VIDEOS.map((video) => (
+            <VideoEmbed key={video.id} video={video} />
+          ))}
         </div>
       </section>
 

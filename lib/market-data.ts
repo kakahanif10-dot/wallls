@@ -1,6 +1,7 @@
 import "server-only";
 
-import { ASSETS, type Asset, type Point } from "@/lib/market";
+import { NWS_MEME_VENUES } from "@/lib/nws-universe";
+import { ALL_BY_SYMBOL, ASSETS, type Asset, type Point } from "@/lib/market";
 
 /**
  * Real market data, fetched server-side from public endpoints. No price on the
@@ -8,7 +9,8 @@ import { ASSETS, type Asset, type Point } from "@/lib/market";
  * reused, or the symbol is reported as missing and the UI says so.
  *
  *  - US equities: api.nasdaq.com quote info + one year of daily closes
- *  - Crypto / meme coins: OKX daily candles + 24h ticker, CoinGecko as fallback
+ *  - Crypto / meme coins: Coinbase, Binance public data API, OKX daily candles
+ *    + 24h ticker, DexScreener for Pump.fun tokens, CoinGecko as fallback
  */
 
 export type FeedQuote = {
@@ -260,6 +262,84 @@ async function fetchOkxHistory(symbol: string): Promise<Point[]> {
   return sortPoints(points);
 }
 
+type BinanceTicker24h = { lastPrice?: string; openPrice?: string };
+
+async function fetchBinanceQuote(symbol: string): Promise<FeedQuote> {
+  const payload = await retry(() =>
+    getJson<BinanceTicker24h>(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${symbol}USDT`),
+  );
+
+  const price = Number(payload.lastPrice);
+  const open24h = Number(payload.openPrice);
+  if (!Number.isFinite(price) || price <= 0) throw new Error(`no binance price for ${symbol}`);
+
+  return {
+    price,
+    previousClose: Number.isFinite(open24h) && open24h > 0 ? open24h : price,
+    change: Number.isFinite(open24h) && open24h > 0 ? price / open24h - 1 : 0,
+    delayed: false,
+    asOf: new Date().toISOString(),
+    provider: "Binance",
+  };
+}
+
+async function fetchBinanceHistory(symbol: string): Promise<Point[]> {
+  const payload = await retry(() =>
+    getJson<number[][]>(
+      `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}USDT&interval=1d&limit=365`,
+      {},
+      3600,
+    ),
+  );
+
+  const points: Point[] = [];
+  for (const row of payload) {
+    const close = Number(row?.[4]);
+    const timestamp = Number(row?.[0]);
+    if (!Number.isFinite(close) || close <= 0 || !Number.isFinite(timestamp)) continue;
+    points.push({ close, date: new Date(timestamp) });
+  }
+
+  if (points.length < 30) throw new Error(`thin binance history for ${symbol}`);
+  return sortPoints(points);
+}
+
+type DexPair = {
+  baseToken?: { address?: string; symbol?: string };
+  priceUsd?: string;
+  priceChange?: { h24?: number };
+  liquidity?: { usd?: number };
+  txns?: { h24?: { buys?: number; sells?: number } };
+};
+
+/** Live price for Pump.fun meme coins from DexScreener (real on-chain pool). */
+async function fetchDexQuote(symbol: string): Promise<FeedQuote> {
+  const venue = NWS_MEME_VENUES[symbol];
+  if (!venue) throw new Error(`no dex venue for ${symbol}`);
+  const payload = await retry(() =>
+    getJson<DexPair[]>(`https://api.dexscreener.com/tokens/v1/${venue.chain}/${venue.address}`),
+  );
+
+  const pairs = (payload ?? []).filter(
+    (p) => p.baseToken?.address === venue.address && p.priceUsd && Number(p.priceUsd) > 0,
+  );
+  if (!pairs.length) throw new Error(`no dex price for ${symbol}`);
+  pairs.sort((a, b) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0));
+
+  const best = pairs[0];
+  const price = Number(best.priceUsd);
+  const change = (best.priceChange?.h24 ?? 0) / 100;
+
+  return {
+    price,
+    previousClose: price / (1 + change),
+    change,
+    delayed: false,
+    asOf: new Date().toISOString(),
+    provider: "DexScreener",
+  };
+}
+
 type CoinGeckoMarket = {
   id: string;
   current_price: number;
@@ -339,10 +419,10 @@ function fresh<T>(entry: CacheEntry<T> | undefined, ttl: number): entry is Cache
   return Boolean(entry && Date.now() - entry.ts < ttl);
 }
 
-async function loadQuotes(): Promise<Record<string, FeedQuote>> {
+async function loadQuotes(list: Asset[] = ASSETS): Promise<Record<string, FeedQuote>> {
   const out: Record<string, FeedQuote> = {};
-  const stocks = ASSETS.filter((asset) => asset.kind === "stock");
-  const crypto = ASSETS.filter((asset) => asset.kind !== "stock");
+  const stocks = list.filter((asset) => asset.kind === "stock");
+  const crypto = list.filter((asset) => asset.kind !== "stock");
 
   const stockResults = await limited(
     stocks.map((asset) => async () => {
@@ -361,7 +441,7 @@ async function loadQuotes(): Promise<Record<string, FeedQuote>> {
 
   const cryptoResults = await limited(
     crypto.map((asset) => async () => {
-      for (const fetcher of [fetchCoinbaseQuote, fetchOkxQuote]) {
+      for (const fetcher of [fetchCoinbaseQuote, fetchBinanceQuote, fetchOkxQuote, fetchDexQuote]) {
         try {
           const quote = await fetcher(asset.symbol);
           quoteCache.set(asset.symbol, { value: quote, ts: Date.now() });
@@ -399,9 +479,9 @@ async function loadQuotes(): Promise<Record<string, FeedQuote>> {
   return out;
 }
 
-async function loadHistory(): Promise<Record<string, Point[]>> {
+async function loadHistory(list: Asset[] = ASSETS): Promise<Record<string, Point[]>> {
   const out: Record<string, Point[]> = {};
-  const stale = ASSETS.filter((asset) => !fresh(historyCache.get(asset.symbol), HISTORY_TTL));
+  const stale = list.filter((asset) => !fresh(historyCache.get(asset.symbol), HISTORY_TTL));
 
   await limited(
     stale.map((asset: Asset) => async () => {
@@ -410,6 +490,7 @@ async function loadHistory(): Promise<Record<string, Point[]>> {
           ? [() => fetchStockHistory(asset.symbol)]
           : [
               () => fetchCoinbaseHistory(asset.symbol),
+              () => fetchBinanceHistory(asset.symbol),
               () => fetchOkxHistory(asset.symbol),
               () => fetchCoinGeckoHistory(asset.symbol),
             ];
@@ -478,4 +559,31 @@ export async function ensureMarketData(force = false): Promise<MarketSnapshot> {
 
 export function getCachedSnapshot(): MarketSnapshot | null {
   return snapshot;
+}
+
+/**
+ * Hydrates quotes and history for an arbitrary subset of tracked symbols
+ * (universe detail pages, universe tables). Only stale symbols are fetched;
+ * results land in the same caches the full snapshot uses.
+ */
+export async function ensureSymbols(symbols: string[]): Promise<void> {
+  const assets = symbols
+    .map((symbol) => ALL_BY_SYMBOL[symbol])
+    .filter((asset): asset is Asset => Boolean(asset));
+
+  if (!assets.length) return;
+
+  const [quotes, history] = await Promise.all([loadQuotes(assets), loadHistory(assets)]);
+
+  const { setMarketData } = await import("@/lib/market");
+  const points: Record<string, Point[]> = {};
+  for (const [symbol, series] of Object.entries(history)) {
+    points[symbol] = withLiveClose(series, quotes[symbol]);
+  }
+  setMarketData(points, quotes);
+}
+
+/** Kind of a tracked symbol, for subset routing in quote endpoints. */
+export function kindOf(symbol: string): Asset["kind"] | undefined {
+  return ALL_BY_SYMBOL[symbol]?.kind;
 }

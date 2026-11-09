@@ -53,7 +53,7 @@ export default function SiteFooter() {
               speculative markets — plus the education to use it responsibly.
             </p>
             <p className="mt-5 text-xs leading-relaxed text-muted/70">
-              26 tracked assets · 6 research desks · 4 courses
+              1,774 tracked assets · 6 research desks · 4 courses
             </p>
           </div>
 

@@ -534,6 +534,95 @@ export const COURSE_BY_SLUG: Record<string, Course> = Object.fromEntries(
   COURSES.map((c) => [c.slug, c]),
 );
 
+export type Video = {
+  id: string;
+  title: string;
+  channel: string;
+  course: string;
+  minutes: number;
+  note: string;
+};
+
+/**
+ * Real, playable trading-education videos from established educators on
+ * YouTube. They are embedded via youtube-nocookie so the site stays
+ * privacy-friendly, and each card links out to the original upload.
+ */
+export const VIDEOS: Video[] = [
+  {
+    id: "dMOcrLMfDFM",
+    title: "How the Stock Market Actually Works (For Beginners)",
+    channel: "Martik Finance",
+    course: "reading-trends",
+    minutes: 10,
+    note: "Exchanges, IPOs, order types and how prices are actually set — the 10-minute version of your first lesson. Watch this before lesson 1.",
+  },
+  {
+    id: "0wf-yybAh7k",
+    title: "What Is Market Timing? Investing Basics Explained",
+    channel: "Investopedia",
+    course: "reading-trends",
+    minutes: 2,
+    note: "Why predicting the market rarely works — the exact mistake the trend-score method is designed to avoid.",
+  },
+  {
+    id: "f2_CzvABe4M",
+    title: "Options Trading Basics — How to Buy & Sell Calls and Puts",
+    channel: "Pandrea Money",
+    course: "reading-trends",
+    minutes: 39,
+    note: "Buying calls and puts with real stock examples, plus when selling options makes sense. Advanced watch — pairs with lesson 4's scoring weights.",
+  },
+  {
+    id: "uQLMSU2NNlk",
+    title: "Call vs Put Options Basics — Options Trading For Beginners",
+    channel: "Option Alpha",
+    course: "reading-trends",
+    minutes: 17,
+    note: "The two contract types everything else is built on: max loss, profit potential and breakevens, explained simply.",
+  },
+  {
+    id: "iAMbSs68rbI",
+    title: "Option Trading Basic to Advanced — Learn Trading in Stock Market",
+    channel: "Pushkar Raj Thakur",
+    course: "reading-trends",
+    minutes: 40,
+    note: "A full basic-to-advanced walkthrough for later: concepts, strategies and techniques in one sitting.",
+  },
+  {
+    id: "hXkiAfjFtgU",
+    title: "What is Bitcoin? — Bitcoin Explained for Beginners",
+    channel: "Ali Abdaal",
+    course: "crypto-without-hype",
+    minutes: 23,
+    note: "How Bitcoin and crypto work, why it's controversial, and how to get started — the single best primer before the crypto course.",
+  },
+  {
+    id: "gMJ1v-cRDsk",
+    title: "Investing Basics: Cryptocurrency",
+    channel: "Charles Schwab",
+    course: "crypto-without-hype",
+    minutes: 4,
+    note: "A major brokerage's own explainer on crypto as an asset class: what it is, how it trades and the risks to price in.",
+  },
+  {
+    id: "OqE4cG5jAOQ",
+    title: "What is a Memecoin? (Crypto Beginners)",
+    channel: "Crypto Beginners",
+    course: "meme-coin-risk",
+    minutes: 8,
+    note: "The simplest honest definition of a memecoin and why value comes from culture and community, not fundamentals — read this before touching the risk module.",
+  },
+  {
+    id: "LsHcR52gIs8",
+    title: "Index Funds For Beginners — The Best Stock Market Investment",
+    channel: "ClearValue Tax",
+    course: "portfolio-construction",
+    minutes: 14,
+    note: "Why index funds beat stock-picking for most investors — the perfect counterpoint to our cluster-based construction method.",
+  },
+];
+
 export const PLANS = [
   {
     id: "reader",
@@ -542,7 +631,7 @@ export const PLANS = [
     cadence: "Free forever",
     tagline: "For learning the framework.",
     features: [
-      "Daily trend scores across 26 tracked assets",
+      "Daily trend scores across 1,774 tracked assets",
       "Two free research pieces per month",
       "Foundation course: Reading a Trend",
       "Weekly market pulse newsletter",

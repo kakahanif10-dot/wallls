@@ -10,9 +10,9 @@ import { LivePrice, LiveChange } from "@/components/live-price";
 import { ARTICLES } from "@/lib/content";
 import {
   ASSETS,
-  ASSET_BY_SYMBOL,
   fmtPct,
   fmtPrice,
+  lookupAsset,
   metricsFor,
   narrativeFor,
   scoreBreakdown,
@@ -20,7 +20,11 @@ import {
   stanceColor,
   type Kind,
 } from "@/lib/market";
-import { ensureMarketData } from "@/lib/market-data";
+import { ensureSymbols } from "@/lib/market-data";
+
+// Featured names prerender; the rest of the 600+ asset universe renders on
+// demand, hydrated with a single symbol's real history.
+export const dynamicParams = true;
 
 const KIND_PATH: Record<Kind, string> = {
   stock: "/markets",
@@ -44,7 +48,7 @@ export async function generateMetadata({
   params: Promise<{ symbol: string }>;
 }): Promise<Metadata> {
   const { symbol } = await params;
-  const asset = ASSET_BY_SYMBOL[symbol];
+  const asset = lookupAsset(symbol);
   if (!asset) return { title: "Asset not found" };
   return {
     title: `${asset.symbol} trend score and stance`,
@@ -54,10 +58,10 @@ export async function generateMetadata({
 
 export default async function TickerPage({ params }: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await params;
-  const asset = ASSET_BY_SYMBOL[symbol];
+  const asset = lookupAsset(symbol);
   if (!asset) notFound();
 
-  await ensureMarketData();
+  await ensureSymbols([symbol]);
 
   const m = metricsFor(asset);
   const pts = series(asset);

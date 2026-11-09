@@ -1,6 +1,7 @@
 import Link from "next/link";
 import MarketExplorer from "@/components/market-explorer";
-import { byKind, metricsFor, rowsFor, type Kind } from "@/lib/market";
+import UniverseTable from "@/components/universe-table";
+import { byKind, metricsFor, rowsFor, universeFor, type Kind } from "@/lib/market";
 import { ensureMarketData } from "@/lib/market-data";
 
 const COPY: Record<
@@ -10,10 +11,10 @@ const COPY: Record<
   stock: {
     eyebrow: "Equity coverage",
     title: "US equities, scored on trend",
-    sub: "Twelve large-cap franchises across AI infrastructure, software, financials, energy and consumer. Each one carries a transparent trend score, a stance, and an invalidation level.",
-    note: "Coverage is deliberately concentrated: twelve names we can actually maintain a view on beats two hundred we cannot.",
+    sub: "The 800 most liquid US names by market cap (S&P 500 + Nasdaq), with the 12 most-covered franchises scored in depth. Every price here comes from a live quote, and every score from real daily closes.",
+    note: "Coverage is deliberately concentrated: twelve names we can maintain a view on, surfaced inside an 800-name universe you can scan and drill into.",
     stats: [
-      { label: "Names covered", hint: "mega & large cap" },
+      { label: "Names covered", hint: "top 800 by market cap" },
       { label: "Median score", hint: "cross-sector" },
       { label: "Above 50-day", hint: "trend participation" },
       { label: "Avg. volatility", hint: "60-day realised" },
@@ -22,7 +23,7 @@ const COPY: Record<
   crypto: {
     eyebrow: "Digital assets",
     title: "Digital assets, without the narrative tax",
-    sub: "Bitcoin, Ethereum and the infrastructure layers where real usage settles. Valued on flow, float and liquidity — the only durable variables in an asset class with no cash flows.",
+    sub: "800 digital assets listed on Coinbase Exchange, Binance and OKX, led by Bitcoin, Ethereum and the infrastructure layers where real usage settles. Valued on flow, float and liquidity — the only durable variables in an asset class with no cash flows.",
     note: "Crypto has no valuation floor. It has a liquidity ceiling. Every stance here is sized around that difference.",
     stats: [
       { label: "Assets covered", hint: "L1s, L2s, oracles" },
@@ -34,7 +35,7 @@ const COPY: Record<
   meme: {
     eyebrow: "Speculative markets",
     title: "Meme coins, graded as risk — not investments",
-    sub: "We cover this sector because subscribers ask, and because ignoring it is not analysis. There is no fundamental case to make here: only concentration, depth and narrative half-life.",
+    sub: "174 meme coins — every Coinbase-listed pair plus Pump.fun trending tokens priced live on DexScreener, graded on the tape. There is no fundamental case to make here: only concentration, depth and narrative half-life.",
     note: "Our conviction ceiling for this sector is deliberately low. A high score means the tape is working, not that the asset is sound.",
     stats: [
       { label: "Assets covered", hint: "attention markets" },
@@ -53,7 +54,8 @@ export default async function CoveragePage({ kind }: { kind: Kind }) {
   const median = [...metrics].sort((a, b) => a.score - b.score)[Math.floor(metrics.length / 2)]?.score ?? 0;
   const above50 = metrics.filter((m) => m.last > m.sma50).length;
   const avgVol = metrics.reduce((a, m) => a + m.vol, 0) / metrics.length;
-  const values = [rows.length, median, `${above50}/${metrics.length}`, `${(avgVol * 100).toFixed(0)}%`];
+  const universe = universeFor(kind);
+  const values = [universe.length, median, `${above50}/${metrics.length}`, `${(avgVol * 100).toFixed(0)}%`];
 
   return (
     <div>
@@ -79,6 +81,13 @@ export default async function CoveragePage({ kind }: { kind: Kind }) {
 
       <section className="mx-auto max-w-7xl px-5 py-12">
         <MarketExplorer rows={rows} />
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 pb-16">
+        <h2 className="mb-6 font-display text-2xl text-bone">
+          Full {copy.eyebrow.toLowerCase()} universe — {universe.length} real assets
+        </h2>
+        <UniverseTable symbols={universe.map((a) => ({ symbol: a.symbol, name: a.name }))} />
       </section>
 
       <section className="mx-auto max-w-7xl px-5">

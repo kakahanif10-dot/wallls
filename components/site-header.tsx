@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/meme-coins", label: "Meme coins" },
   { href: "/research", label: "Research" },
   { href: "/academy", label: "Academy" },
+  { href: "/chat", label: "Live chat" },
   { href: "/pricing", label: "Pricing" },
 ];
 

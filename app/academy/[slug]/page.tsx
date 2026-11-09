@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { COURSES, COURSE_BY_SLUG } from "@/lib/content";
+import { COURSES, COURSE_BY_SLUG, VIDEOS } from "@/lib/content";
+import VideoEmbed from "@/components/video-embed";
 
 export function generateStaticParams() {
   return COURSES.map((c) => ({ slug: c.slug }));
@@ -82,6 +83,22 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               </details>
             ))}
           </div>
+
+          {VIDEOS.filter((v) => v.course === course.slug).length > 0 && (
+            <div className="mt-10">
+              <h2 className="font-display text-2xl text-bone">Watch before you read</h2>
+              <p className="mt-2 text-sm text-muted">
+                Real videos from established educators that cover this course&apos;s first lesson.
+              </p>
+              <div className="mt-5 grid gap-6">
+                {VIDEOS.filter((v) => v.course === course.slug)
+                  .slice(0, 2)
+                  .map((video) => (
+                    <VideoEmbed key={video.id} video={video} />
+                  ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-10 rounded-xl border border-line bg-ink-900/60 p-6">
             <h2 className="font-display text-xl text-bone">What you will be able to do</h2>
