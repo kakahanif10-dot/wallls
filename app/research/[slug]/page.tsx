@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import PremiumGate from "@/components/premium-gate";
 import { ARTICLES, ARTICLE_BY_SLUG, type Block } from "@/lib/content";
 import { fmtPct, fmtPrice, metricsFor, ASSET_BY_SYMBOL } from "@/lib/market";
+import { ensureMarketData } from "@/lib/market-data";
 
 export function generateStaticParams() {
   return ARTICLES.map((a) => ({ slug: a.slug }));
@@ -47,6 +48,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const article = ARTICLE_BY_SLUG[slug];
   if (!article) notFound();
+
+  await ensureMarketData();
 
   const [first, ...remainder] = article.body;
   const more = ARTICLES.filter((a) => a.slug !== article.slug).slice(0, 2);
@@ -105,7 +108,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               <p className="mt-2 text-xs leading-relaxed text-muted">
                 This article is analysis and education, not investment advice, and contains no
                 recommendation to transact. The desk holds no positions in the instruments discussed.
-                Figures referenced are generated from a sample dataset in this build. Read the{" "}
+                Figures referenced are as of publication; live quotes and scores appear on the{" "}
+                <Link href="/markets" className="text-bone/80 underline decoration-line underline-offset-2">
+                  coverage pages
+                </Link>
+                . Read the{" "}
                 <Link href="/disclaimer" className="text-bone/80 underline decoration-line underline-offset-2">
                   methodology
                 </Link>

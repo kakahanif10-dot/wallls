@@ -83,8 +83,8 @@ export default function SiteFooter() {
             <strong className="text-bone/80">Not investment advice.</strong> NextWall Street
             publishes market analysis and educational material only. Nothing here is a
             recommendation, solicitation or offer to buy or sell any security, token or derivative.
-            Prices and indicators shown on this build are generated from a deterministic sample
-            dataset for demonstration and are not live market quotes. Investing and trading involve
+            Quotes are sourced from public market endpoints; equity prices are delayed and may be
+            unavailable outside trading hours. Investing and trading involve
             substantial risk of loss, including total loss of capital. Past performance does not
             predict future results. Do your own research and consult a licensed adviser where
             appropriate.

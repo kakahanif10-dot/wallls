@@ -28,6 +28,9 @@ export default function TrendChart({ values, label, height = 320 }: Props) {
   const data = useMemo(() => values.slice(-active.days), [values, active.days]);
 
   const { min, max, path, area, smaPath, coords } = useMemo(() => {
+    if (data.length < 2) {
+      return { min: 0, max: 0, path: "", area: "", smaPath: "", coords: [] as (readonly [number, number])[] };
+    }
     const lo = Math.min(...data);
     const hi = Math.max(...data);
     const pad = (hi - lo) * 0.12 || hi * 0.05 || 1;
@@ -58,6 +61,14 @@ export default function TrendChart({ values, label, height = 320 }: Props) {
 
     return { min: mn, max: mx, path: line, area: fill, smaPath: smaLine, coords: pts };
   }, [data, height]);
+
+  if (data.length < 2) {
+    return (
+      <div className="flex h-[220px] items-center justify-center rounded-lg border border-line/70 bg-ink-900/40 text-sm text-muted">
+        Price history for {label} is unavailable right now.
+      </div>
+    );
+  }
 
   const rising = data[data.length - 1] >= data[0];
   const stroke = rising ? "#3ecf8e" : "#f0645f";

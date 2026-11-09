@@ -91,13 +91,23 @@ export default function DisclaimerPage() {
           grading it.
         </p>
 
-        <h2 className="mt-12 font-display text-2xl text-bone">4. Data in this build</h2>
+        <h2 className="mt-12 font-display text-2xl text-bone">4. Where the data comes from</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          This deployment runs on a deterministic sample dataset generated from a fixed seed per
-          asset. It is internally consistent and stable, which makes the product demonstrable end to
-          end, but it is <strong className="text-bone/90">not live market data</strong> and must not be
-          used for trading decisions. Production requires a licensed market-data feed and a reviewed
-          pricing and distribution agreement.
+          Quotes and daily closes are fetched server-side from public market endpoints
+          (<strong className="text-bone/90">Nasdaq</strong> for US equities and
+          <strong className="text-bone/90"> OKX</strong> for crypto and meme coins, with CoinGecko as a
+          fallback for digital assets). Index prices refresh about once a minute; equity quotes are
+          <strong className="text-bone/90"> delayed</strong>, and outside US trading hours they show the
+          last close. The feed badge on the tape names the source and whether the tape is delayed.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-muted">
+          Nothing on the site is generated: the chart, the 52-week range, realised volatility, the
+          moving averages and the trend score are all computed from real daily closes. When a source is
+          unreachable the site falls back to the last real value it received and says so, rather than
+          inventing a price. The trend score is an output of the published scoring model, never a
+          prediction, and none of it is investment advice. Displaying third-party quotes publicly
+          requires a licence or agreement that allows redistribution, and a commercial provider plan is
+          required before this becomes a paid data product.
         </p>
 
         <h2 className="mt-12 font-display text-2xl text-bone">5. Risk disclosure</h2>

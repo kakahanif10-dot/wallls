@@ -152,12 +152,12 @@ export default function MarketExplorer({ rows }: { rows: Row[] }) {
       </div>
 
       <p className="mt-4 text-xs leading-relaxed text-muted/70">
-        Prices tick every 1.5 seconds from a simulated feed; scores are computed from a fixed,
-        published methodology (see{" "}
+        Quotes come from public market endpoints and refresh about once a minute; equity prices are
+        delayed. Scores are outputs of the fixed, published methodology (see{" "}
         <Link href="/disclaimer" className="text-bone/80 underline decoration-line underline-offset-2 hover:text-gold-bright">
           methodology
         </Link>
-        ). Values on this build come from a deterministic sample dataset, not a live feed.
+        ), not predictions.
       </p>
     </div>
   );

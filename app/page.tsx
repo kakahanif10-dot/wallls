@@ -4,6 +4,7 @@ import Sparkline from "@/components/sparkline";
 import { LivePrice, LiveChange } from "@/components/live-price";
 import { ARTICLES, COURSES } from "@/lib/content";
 import { marketPulse, rowsFor, stanceColor, type Row } from "@/lib/market";
+import { ensureMarketData } from "@/lib/market-data";
 
 function BoardRow({ row }: { row: Row }) {
   return (
@@ -33,7 +34,8 @@ function BoardRow({ row }: { row: Row }) {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  await ensureMarketData();
   const pulse = marketPulse();
   const board = rowsFor("stock").slice(0, 5);
   const featured = ARTICLES.slice(0, 3);
@@ -77,12 +79,13 @@ export default function HomePage() {
             </div>
 
             <p className="mt-5 text-xs text-muted/70">
-              Analysis and education only. Not investment advice. Prices shown are sample data.
+              Analysis and education only. Not investment advice. Equities are delayed; crypto quotes
+              update continuously.
             </p>
 
             <dl className="mt-10 grid max-w-lg grid-cols-3 gap-6 border-t border-line/60 pt-7">
               {[
-                { k: "26", v: "assets tracked" },
+                { k: "24", v: "assets tracked" },
                 { k: "6", v: "research desks" },
                 { k: "4", v: "academy courses" },
               ].map((item) => (

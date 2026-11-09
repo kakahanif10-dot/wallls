@@ -522,50 +522,44 @@ export const ASSET_BY_SYMBOL: Record<string, Asset> = Object.fromEntries(
   ASSETS.map((a) => [a.symbol, a]),
 );
 
-function hashSeed(str: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
+/**
+ * Real market data, hydrated once per request by `ensureMarketData()` in
+ * `lib/market-data.ts`. Nothing here is generated: if a symbol has no fetched
+ * history, `series()` returns an empty array and the UI reports missing data
+ * rather than inventing a price.
+ */
+export type FeedQuote = {
+  price: number;
+  previousClose: number;
+  change: number;
+  delayed: boolean;
+  asOf: string;
+  provider: string;
+};
+
+const REAL_POINTS: Record<string, Point[]> = {};
+const REAL_QUOTES: Record<string, FeedQuote> = {};
+
+export function setMarketData(
+  points: Record<string, Point[]>,
+  quotes: Record<string, FeedQuote>,
+): void {
+  for (const [symbol, history] of Object.entries(points)) REAL_POINTS[symbol] = history;
+  for (const [symbol, quote] of Object.entries(quotes)) REAL_QUOTES[symbol] = quote;
 }
 
-function rng(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+export function quoteFor(symbol: string): FeedQuote | undefined {
+  return REAL_QUOTES[symbol];
 }
 
-const DAY = 86_400_000;
+export function hasMarketData(symbol: string): boolean {
+  return (REAL_POINTS[symbol]?.length ?? 0) > 1;
+}
 
 export function series(asset: Asset, days = 260): Point[] {
-  const rand = rng(hashSeed(asset.symbol + "v3"));
-  const volBase = asset.kind === "stock" ? 0.016 : asset.kind === "crypto" ? 0.038 : 0.075;
-  const vol = volBase * (0.75 + rand() * 0.7);
-  const regime = (rand() - 0.44) * 0.0032;
-  const startFactor = 0.62 + rand() * 0.7;
-
-  let p = asset.base * startFactor;
-  const raw: number[] = [];
-  for (let i = 0; i < days; i++) {
-    const shock = (rand() + rand() + rand() + rand() - 2) / 1.15;
-    const cycle = Math.sin(i / (11 + Math.floor(rand() * 9))) * vol * 0.42;
-    p = Math.max(p * (1 + regime + shock * vol + cycle), asset.base * 0.02);
-    raw.push(p);
-  }
-
-  const scale = (asset.base * (0.82 + rand() * 0.22)) / raw[raw.length - 1];
-  const now = Date.now();
-  return raw.map((v, i) => ({
-    close: v * scale,
-    date: new Date(now - (days - 1 - i) * DAY),
-  }));
+  const history = REAL_POINTS[asset.symbol];
+  if (!history?.length) return [];
+  return history.slice(-days);
 }
 
 function mean(values: number[]): number {
@@ -596,9 +590,31 @@ function rsi(values: number[], period = 14): number {
   return 100 - 100 / (1 + rs);
 }
 
+const NO_DATA: Metrics = {
+  last: 0,
+  change24h: 0,
+  change7d: 0,
+  change30d: 0,
+  change90d: 0,
+  change1y: 0,
+  high52: 0,
+  low52: 0,
+  vol: 0,
+  rsi: 50,
+  sma20: 0,
+  sma50: 0,
+  sma200: 0,
+  score: 0,
+  confidence: 0,
+  stance: "Hold",
+  riskGrade: "High",
+  percentile: 0,
+};
+
 export function metricsFor(asset: Asset): Metrics {
   const pts = series(asset);
   const values = pts.map((p) => p.close);
+  if (values.length < 30) return NO_DATA;
   const last = values[values.length - 1];
   const sma20 = smaAt(values, 20);
   const sma50 = smaAt(values, 50);
@@ -660,6 +676,7 @@ export function metricsFor(asset: Asset): Metrics {
 }
 
 export function fmtPrice(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "—";
   if (value >= 1000) return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
   if (value >= 10) return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
   if (value >= 0.01) return `$${value.toFixed(4)}`;
@@ -667,6 +684,7 @@ export function fmtPrice(value: number): string {
 }
 
 export function fmtPct(value: number, digits = 2): string {
+  if (!Number.isFinite(value)) return "—";
   const v = value * 100;
   return `${v >= 0 ? "+" : ""}${v.toFixed(digits)}%`;
 }
@@ -741,14 +759,16 @@ export function rowsFor(kind?: Kind): Row[] {
 
 export type LiveSeed = Record<string, { price: number; change: number; vol: number }>;
 
-/** Baseline quotes + per-tick volatility for the simulated live feed. */
+/** Server-rendered opening quotes, so the first paint already shows real prices. */
 export function liveSeed(): LiveSeed {
   const out: LiveSeed = {};
   for (const asset of ASSETS) {
+    const quote = quoteFor(asset.symbol);
     const m = metricsFor(asset);
+    if (!quote && !hasMarketData(asset.symbol)) continue;
     out[asset.symbol] = {
-      price: m.last,
-      change: m.change24h,
+      price: quote?.price ?? m.last,
+      change: quote?.change ?? m.change24h,
       vol: Math.min(0.0042, Math.max(0.00035, m.vol * 0.0035)),
     };
   }

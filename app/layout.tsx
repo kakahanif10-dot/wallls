@@ -4,6 +4,10 @@ import SiteHeader from "@/components/site-header";
 import SiteFooter from "@/components/site-footer";
 import LivePricesProvider from "@/components/live-prices";
 import { liveSeed } from "@/lib/market";
+import { ensureMarketData } from "@/lib/market-data";
+
+// Re-fetch real quotes so rendered pages stay current rather than frozen at build time.
+export const revalidate = 120;
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://nextwallstreet.com"),
@@ -30,11 +34,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const snapshot = await ensureMarketData();
+  const source = snapshot.sources.join(" + ");
+  const delayed = Object.values(snapshot.quotes).some((quote) => quote.delayed);
+
   return (
     <html lang="en">
       <body className="min-h-screen antialiased">
-        <LivePricesProvider seed={liveSeed()}>
+        <LivePricesProvider seed={liveSeed()} source={source} delayed={delayed}>
           <SiteHeader />
           <main>{children}</main>
           <SiteFooter />

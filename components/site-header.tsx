@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import LiveClock from "@/components/live-clock";
+import FeedBadge from "@/components/feed-badge";
 
 const LINKS = [
   { href: "/markets", label: "Markets" },
@@ -51,6 +52,7 @@ export default function SiteHeader() {
         <div className="hidden items-center gap-4 lg:flex">
           <span className="h-4 w-px bg-line" />
           <LiveClock />
+          <FeedBadge className="text-[10px] uppercase tracking-[0.14em] text-muted" />
           <span className="h-4 w-px bg-line" />
           <Link
             href="/watchlist"
@@ -86,7 +88,7 @@ export default function SiteHeader() {
         <nav className="border-t border-line/70 bg-ink-900 px-5 pb-5 pt-3 lg:hidden">
           <div className="mb-3 flex items-center justify-between border-b border-line/60 pb-3">
             <LiveClock />
-            <span className="text-[10px] uppercase tracking-[0.14em] text-muted">Simulated feed</span>
+            <FeedBadge className="text-[10px] uppercase tracking-[0.14em] text-muted" />
           </div>
           <div className="grid gap-1">
             {[...LINKS, { href: "/watchlist", label: "Watchlist" }].map((link) => (

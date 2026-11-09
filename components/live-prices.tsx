@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 export type LiveSeedEntry = { price: number; change: number; vol: number };
 export type LiveSeed = Record<string, LiveSeedEntry>;
@@ -13,15 +13,45 @@ export type Quote = {
   tick: number;
 };
 
+export type FeedMeta = {
+  mode: "live" | "unavailable";
+  source: string;
+  asOf: string | null;
+  delayed: boolean;
+};
+
+type FeedResponse = {
+  mode?: "live" | "unavailable";
+  source?: string;
+  asOf?: string | null;
+  delayed?: boolean;
+  quotes?: Record<string, { price: number; change: number; previousClose: number }>;
+};
+
 const QuoteContext = createContext<Record<string, Quote> | null>(null);
+const FeedContext = createContext<FeedMeta>({
+  mode: "live",
+  source: "",
+  asOf: null,
+  delayed: true,
+});
 
-const TICK_MS = 1500;
+const POLL_MS = 30_000;
 
+/**
+ * Quotes come from the server feed only. There is deliberately no client-side
+ * price simulation: a number on screen is either a real quote or the last real
+ * quote we received, never an invented walk.
+ */
 export default function LivePricesProvider({
   seed,
+  source = "",
+  delayed = true,
   children,
 }: {
   seed: LiveSeed;
+  source?: string;
+  delayed?: boolean;
   children: React.ReactNode;
 }) {
   const initial = useMemo(() => {
@@ -40,35 +70,81 @@ export default function LivePricesProvider({
   }, [seed]);
 
   const [quotes, setQuotes] = useState<Record<string, Quote>>(initial);
+  const [meta, setMeta] = useState<FeedMeta>({
+    mode: "live",
+    source,
+    asOf: null,
+    delayed,
+  });
+  const mounted = useRef(true);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setQuotes((prev) => {
-        const next: Record<string, Quote> = {};
-        for (const [symbol, quote] of Object.entries(prev)) {
-          const step = seed[symbol]?.vol ?? 0.0008;
-          const roll = (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
-          const jump = Math.random() < 0.05 ? (Math.random() - 0.5) * 6 : 1;
-          const price = Math.max(quote.price * (1 + roll * step * jump), 1e-12);
-          next[symbol] = {
-            price,
-            open: quote.open,
-            change: price / quote.open - 1,
-            dir: price > quote.price ? 1 : -1,
-            tick: quote.tick + 1,
-          };
+    mounted.current = true;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const response = await fetch("/api/quotes", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as FeedResponse;
+        if (cancelled) return;
+
+        if (data?.mode !== "live" || !data.quotes) {
+          setMeta((prev) => ({ ...prev, mode: "unavailable" }));
+          return;
         }
-        return next;
-      });
-    }, TICK_MS);
 
-    return () => clearInterval(id);
-  }, [seed]);
+        setMeta({
+          mode: "live",
+          source: data.source || "",
+          asOf: data.asOf ?? null,
+          delayed: data.delayed ?? false,
+        });
 
-  return <QuoteContext.Provider value={quotes}>{children}</QuoteContext.Provider>;
+        setQuotes((prev) => {
+          const next = { ...prev };
+          for (const [symbol, row] of Object.entries(data.quotes!)) {
+            if (!row || typeof row.price !== "number" || row.price <= 0) continue;
+            const previous = prev[symbol];
+            next[symbol] = {
+              price: row.price,
+              open: row.previousClose > 0 ? row.previousClose : (previous?.open ?? row.price),
+              change:
+                row.previousClose > 0
+                  ? row.price / row.previousClose - 1
+                  : (previous?.change ?? 0),
+              dir: !previous || row.price === previous.price ? 0 : row.price > previous.price ? 1 : -1,
+              tick: (previous?.tick ?? 0) + 1,
+            };
+          }
+          return next;
+        });
+      } catch {
+        // Keep the last real quote rather than degrade to a synthetic one.
+      }
+    };
+
+    load();
+    const id = setInterval(load, POLL_MS);
+    return () => {
+      cancelled = true;
+      mounted.current = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  return (
+    <FeedContext.Provider value={meta}>
+      <QuoteContext.Provider value={quotes}>{children}</QuoteContext.Provider>
+    </FeedContext.Provider>
+  );
 }
 
 export function useQuote(symbol: string): Quote | undefined {
   const context = useContext(QuoteContext);
   return context ? context[symbol] : undefined;
+}
+
+export function useFeedMeta(): FeedMeta {
+  return useContext(FeedContext);
 }

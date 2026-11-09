@@ -1,6 +1,7 @@
 import Link from "next/link";
 import MarketExplorer from "@/components/market-explorer";
 import { byKind, metricsFor, rowsFor, type Kind } from "@/lib/market";
+import { ensureMarketData } from "@/lib/market-data";
 
 const COPY: Record<
   Kind,
@@ -44,7 +45,8 @@ const COPY: Record<
   },
 };
 
-export default function CoveragePage({ kind }: { kind: Kind }) {
+export default async function CoveragePage({ kind }: { kind: Kind }) {
+  await ensureMarketData();
   const copy = COPY[kind];
   const rows = rowsFor(kind);
   const metrics = byKind(kind).map((a) => metricsFor(a));

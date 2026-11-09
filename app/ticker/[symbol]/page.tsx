@@ -5,6 +5,7 @@ import TrendChart from "@/components/trend-chart";
 import ScoreDial from "@/components/score-dial";
 import WatchlistButton from "@/components/watchlist-button";
 import LiveClock from "@/components/live-clock";
+import FeedBadge from "@/components/feed-badge";
 import { LivePrice, LiveChange } from "@/components/live-price";
 import { ARTICLES } from "@/lib/content";
 import {
@@ -19,6 +20,7 @@ import {
   stanceColor,
   type Kind,
 } from "@/lib/market";
+import { ensureMarketData } from "@/lib/market-data";
 
 const KIND_PATH: Record<Kind, string> = {
   stock: "/markets",
@@ -54,6 +56,8 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
   const { symbol } = await params;
   const asset = ASSET_BY_SYMBOL[symbol];
   if (!asset) notFound();
+
+  await ensureMarketData();
 
   const m = metricsFor(asset);
   const pts = series(asset);
@@ -108,7 +112,7 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
               </span>
               <span className="flex items-center gap-2 pb-1.5">
                 <LiveClock compact />
-                <span className="text-[11px] text-muted/70">simulated feed</span>
+                <FeedBadge className="text-[11px] text-muted/70" />
               </span>
             </div>
           </div>
@@ -310,8 +314,8 @@ export default async function TickerPage({ params }: { params: Promise<{ symbol:
       <section className="mx-auto max-w-7xl px-5 pb-4">
         <p className="rounded-lg border border-line/70 bg-ink-900/40 px-4 py-3 text-[11px] leading-relaxed text-muted/70">
           This report is market analysis and education, not investment advice. It contains no
-          recommendation to transact. Figures are generated from a deterministic sample dataset for
-          this demonstration build and are not live prices. See the{" "}
+          recommendation to transact. Scores are computed from real daily closes; equity quotes are
+          delayed and crypto quotes stream continuously. See the{" "}
           <Link href="/disclaimer" className="text-bone/80 underline decoration-line underline-offset-2">
             methodology
           </Link>{" "}

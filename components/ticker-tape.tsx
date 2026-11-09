@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuote } from "@/components/live-prices";
+import FeedBadge from "@/components/feed-badge";
+import { useFeedMeta, useQuote } from "@/components/live-prices";
 import { fmtPct, fmtPrice, type Row } from "@/lib/market";
 
 function TapeItem({ row }: { row: Row }) {
@@ -27,16 +28,18 @@ function TapeItem({ row }: { row: Row }) {
 }
 
 export default function TickerTape({ rows }: { rows: Row[] }) {
+  const { mode } = useFeedMeta();
   const doubled = [...rows, ...rows];
 
   return (
     <div className="overflow-hidden border-y border-line/70 bg-ink-900/70">
       <div className="flex items-stretch">
         <div className="z-10 flex shrink-0 items-center gap-1.5 border-r border-line/70 bg-ink-900 px-3">
-          <span className="live-dot h-1.5 w-1.5 rounded-full bg-up" aria-hidden="true" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-            Simulated live
-          </span>
+          <span
+            className={`live-dot h-1.5 w-1.5 rounded-full ${mode === "live" ? "bg-up" : "bg-gold"}`}
+            aria-hidden="true"
+          />
+          <FeedBadge className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted" />
         </div>
         <div className="marquee-track flex items-center gap-8 py-2.5">
           {doubled.map((row, i) => (

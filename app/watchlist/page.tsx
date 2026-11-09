@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import WatchlistPanel from "@/components/watchlist-panel";
 import { rowsFor } from "@/lib/market";
+import { ensureMarketData } from "@/lib/market-data";
 
 export const metadata: Metadata = {
   title: "Your watchlist",
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
     "The assets you follow, with their current trend score, stance and change — stored locally in your browser.",
 };
 
-export default function WatchlistPage() {
+export default async function WatchlistPage() {
+  await ensureMarketData();
   const rows = rowsFor();
 
   return (
